@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 
 export const HOME = process.env.OBOARD_HOME ?? join(homedir(), ".orangeboard");
 export const SKETCHES = join(HOME, "sketches");
@@ -12,8 +12,17 @@ export function saveSketch(png: Buffer): string {
   const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
   const file = join(SKETCHES, `${stamp}.png`);
   writeFileSync(file, png);
+  writeFileSync(meta(file), JSON.stringify({ project: projectRoot(process.cwd()) }));
   copyFileSync(file, LATEST);
   return file;
+}
+
+export const meta = (png: string) => png.replace(/\.png$/, ".json");
+
+// Git toplevel of dir, or dir itself outside a repo.
+export function projectRoot(dir: string): string {
+  const r = spawnSync("git", ["rev-parse", "--show-toplevel"], { cwd: dir, encoding: "utf8" });
+  return r.status === 0 ? r.stdout.trim() : resolve(dir);
 }
 
 export function copyToClipboard(file: string): boolean {

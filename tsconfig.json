@@ -2,8 +2,9 @@
   "compilerOptions": {
     "target": "esnext",
     "module": "nodenext",
-    "noEmit": true,
-    "allowImportingTsExtensions": true,
+    "rootDir": "src",
+    "outDir": "dist",
+    "rewriteRelativeImportExtensions": true,
     "erasableSyntaxOnly": true,
     "verbatimModuleSyntax": true,
     "strict": true,

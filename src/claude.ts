@@ -1,17 +1,20 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { HOME, LATEST, SKETCHES } from "./store.ts";
+import { HOME, LATEST, meta, projectRoot, SKETCHES } from "./store.ts";
 
 const SEEN = join(HOME, "seen");
 const WINDOW_MS = 30 * 60e3;
 
-// UserPromptSubmit hook: tell Claude about sketches saved since this session's last prompt.
+// UserPromptSubmit hook: tell Claude about sketches saved from this project since this session's last prompt.
 export function hook() {
-  let sid = "default";
+  let sid = "default", cwd = process.cwd();
   try {
-    sid = JSON.parse(readFileSync(0, "utf8")).session_id ?? sid;
+    const input = JSON.parse(readFileSync(0, "utf8"));
+    sid = input.session_id ?? sid;
+    cwd = input.cwd ?? cwd;
   } catch {}
+  const project = projectRoot(cwd);
   mkdirSync(SEEN, { recursive: true });
   const seenFile = join(SEEN, sid.replace(/[^\w-]/g, "_"));
   const last = existsSync(seenFile) ? Number(readFileSync(seenFile, "utf8")) || 0 : 0;
@@ -28,7 +31,7 @@ export function hook() {
     ? readdirSync(SKETCHES)
         .filter((f) => f.endsWith(".png"))
         .map((f) => join(SKETCHES, f))
-        .filter((p) => statSync(p).mtimeMs > since)
+        .filter((p) => statSync(p).mtimeMs > since && sketchProject(p) === project)
         .sort()
     : [];
   if (fresh.length)
@@ -36,6 +39,12 @@ export function hook() {
       `The user drew ${fresh.length} new orangeboard sketch${fresh.length > 1 ? "es" : ""} for you (newest last). ` +
         `View with the Read tool before responding:\n${fresh.map((p) => `- ${p}`).join("\n")}`,
     );
+}
+
+function sketchProject(png: string): string | undefined {
+  try {
+    return JSON.parse(readFileSync(meta(png), "utf8")).project;
+  } catch {}
 }
 
 // Installs the hook into ~/.claude/settings.json and a /sketch skill.

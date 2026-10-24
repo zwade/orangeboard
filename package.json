@@ -1,15 +1,21 @@
 {
   "name": "orangeboard",
+  "version": "0.1.0",
   "type": "module",
   "bin": {
-    "oboard": "src/oboard.ts"
+    "oboard": "dist/oboard.js"
   },
   "scripts": {
-    "typecheck": "tsc"
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "prepack": "yarn build"
   },
   "packageManager": "yarn@4.18.1",
   "devDependencies": {
     "@types/node": "^26.6.5",
     "typescript": "^7.0.2"
-  }
+  },
+  "files": [
+    "dist"
+  ]
 }
