@@ -1,6 +1,10 @@
-# orangeboard
+# `orangeboard ✳`
 
 Terminal whiteboard (`oboard`) for sketching things to Claude. Uses the kitty graphics protocol + SGR pixel mouse reporting, so strokes are drawn at real pixel resolution.
+
+| Prompt | Result |
+| --- | --- |
+| <img width="2048" height="1287" alt="df3e6080-12e1-45a3-8046-7e533753abbc" src="https://github.com/user-attachments/assets/6a846edf-5d7b-4fca-b7f2-58dadb30f265" /> | <img width="984" height="960" alt="Screenshot 2026-10-24 at 9 21 48 AM" src="https://github.com/user-attachments/assets/1349974c-ac8e-4150-8604-3ef8b054e23c" /> |
 
 ```sh
 yarn install
