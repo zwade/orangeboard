@@ -59,7 +59,7 @@ let size = 1;
 let pixelMouse = false;
 let kitty = false;
 let paneTop = 0, paneLeft = 0;
-let status = "draw with mouse · right-drag erases";
+let status = "draw with mouse · ⌫ or ~ toggles eraser";
 let flushTimer: NodeJS.Timeout | undefined;
 
 const bg = () => (dark ? DARK_BG : LIGHT_BG);
@@ -408,10 +408,24 @@ function onFocus(focused: boolean) {
   }
 }
 
+// Some terminals (iTerm2) honor 1016 without answering the DECRQM probe; an out-of-range coordinate gives it away.
+function usePixelMouse() {
+  pixelMouse = true;
+  if (!current) return;
+  // Reinterpret the in-progress stroke's points, which were read as cells.
+  for (let i = 0; i < current.pts.length; i += 2) {
+    const x = current.pts[i] / (cw * S) + 0.5, y = current.pts[i + 1] / (ch * S) + top + 0.5;
+    current.pts[i] = (x - 1) * S;
+    current.pts[i + 1] = Math.max(0, y - 1 - top * ch) * S;
+  }
+  replay();
+}
+
 // --- input ---
 function onMouse(b: number, x: number, y: number, release: boolean) {
   if (b & 64) return; // wheel
   // Position in reported pixels.
+  if (!pixelMouse && !TMUX && (x > cols || y > rows)) usePixelMouse();
   const [px, sy] = pixelMouse ? [x - 1, y - 1] : [(x - 0.5) * cw, (y - 0.5) * ch];
   const row = Math.floor(sy / ch), col = Math.floor(px / cw);
   const py = Math.max(0, sy - top * ch); // canvas-relative
@@ -572,7 +586,7 @@ env:   OBOARD_SCALE=n                  buffer pixels per terminal-reported pixel
     process.exit(1);
   }
 
-  out(`${ESC}[?1049h${ESC}[?25l${ESC}[?1000h${ESC}[?1002h${ESC}[?1006h${pixelMouse ? `${ESC}[?1016h` : ""}${TMUX ? `${ESC}[?1004h` : ""}`);
+  out(`${ESC}[?1049h${ESC}[?25l${ESC}[?1000h${ESC}[?1002h${ESC}[?1006h${TMUX ? "" : `${ESC}[?1016h`}${TMUX ? `${ESC}[?1004h` : ""}`);
   cols = process.stdout.columns;
   rows = process.stdout.rows;
   if (img) base = fit(img, cols * cw * S, (rows - 1 - (rows >= 12 ? HEADER_ROWS : 0)) * ch * S);
