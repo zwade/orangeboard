@@ -1,6 +1,31 @@
 {
   "name": "orangeboard",
-  "version": "0.1.0",
+  "version": "0.1.1",
+  "description": "An in-terminal whiteboard with Claude Code integration. Sketch out your idea for Claude to read immediately.",
+  "keywords": [
+    "whiteboard",
+    "terminal",
+    "kitty-graphics",
+    "claude",
+    "claude-code",
+    "sketch",
+    "tui"
+  ],
+  "author": {
+    "name": "Zachary Wade",
+    "email": "zach@endothermic.ai"
+  },
+  "homepage": "https://github.com/zwade/orangeboard#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zwade/orangeboard.git"
+  },
+  "bugs": {
+    "url": "https://github.com/zwade/orangeboard/issues"
+  },
+  "engines": {
+    "node": ">=22.2"
+  },
   "type": "module",
   "bin": {
     "oboard": "dist/oboard.js"
