@@ -54,6 +54,7 @@ let current: Stroke | undefined;
 let mode: "pen" | "erase" | "text" = "pen";
 let typing: Text | undefined;
 let dark = false;
+let unsaved = false;
 let color = 1;
 let size = 1;
 let pixelMouse = false;
@@ -228,14 +229,22 @@ function header(): string {
   const px = new Uint8Array(w * h * 3);
   for (let i = 0; i < px.length; i += 3) px.set(ORANGE, i);
   const u = Math.max(1, Math.floor((h * 0.72) / 9)); // 9 = ascender-to-descender rows
-  const x0 = cw * S, y0 = Math.round((h - 9 * u) / 2);
-  [..."orangeboard"].forEach((c, i) =>
-    glyph(c, (gx, gy) => {
-      const gx0 = x0 + (i * ADVANCE + gx) * u;
-      if (gx0 + u > w) return;
-      for (let y = 0; y < u; y++) px.fill(255, ((y0 + gy * u + y) * w + gx0) * 3, ((y0 + gy * u + y) * w + gx0 + u) * 3);
-    }),
-  );
+  const y0 = Math.round((h - 9 * u) / 2);
+  const text = (str: string, x0: number, u: number, y0: number, rgb: RGB) =>
+    [...str].forEach((c, i) =>
+      glyph(c, (gx, gy) => {
+        const gx0 = x0 + (i * ADVANCE + gx) * u;
+        if (gx0 + u > w) return;
+        for (let y = 0; y < u; y++)
+          for (let x = gx0; x < gx0 + u; x++) px.set(rgb, ((y0 + gy * u + y) * w + x) * 3);
+      }),
+    );
+  text("orangeboard", cw * S, u, y0, [255, 255, 255]);
+  if (unsaved) {
+    // Small, light orange, sharing the title's baseline.
+    const su = TEXT_UNITS[0] * S;
+    text("(unsaved changes)", cw * S + (11 * ADVANCE + 2) * u, su, y0 + 7 * (u - su), [255, 196, 150]);
+  }
   return place(HEADER_ID, px, w, h, 0, 0, cols, top, -2);
 }
 
@@ -313,6 +322,12 @@ function layout() {
 }
 
 // --- actions ---
+function setUnsaved(v: boolean) {
+  if (unsaved === v) return;
+  unsaved = v;
+  if (!hidden) out(header());
+}
+
 function setMode(m: typeof mode) {
   if (typing) finishText();
   mode = m;
@@ -322,7 +337,6 @@ function setMode(m: typeof mode) {
 function finishText() {
   const t = typing!;
   typing = undefined;
-  mode = "pen";
   if (!t.text.trim()) {
     ops.splice(ops.indexOf(t), 1);
     replay();
@@ -334,18 +348,21 @@ function finishText() {
 function undo() {
   if (!ops.length) return;
   ops.pop();
+  setUnsaved(true);
   replay();
   invalidate();
 }
 
 function clear() {
   ops.push({ kind: "clear" });
+  setUnsaved(true);
   replay();
   invalidate();
 }
 
 function toggleTheme() {
   dark = !dark;
+  setUnsaved(true);
   replay();
   invalidate();
 }
@@ -377,6 +394,7 @@ function save(): boolean {
   const data = new Uint8Array(w * h * 3);
   for (let y = 0; y < h; y++) data.set(buf.subarray(((y0 + y) * W + x0) * 3, ((y0 + y) * W + x1 + 1) * 3), y * w * 3);
   const file = saveSketch(encodePng({ w, h, data }));
+  setUnsaved(false);
   status = `saved ${w}×${h}${copyToClipboard(file) ? " · copied to clipboard" : ""}`;
   toolbar();
   return true;
@@ -447,12 +465,8 @@ function onMouse(b: number, x: number, y: number, release: boolean) {
       toolbar();
       return;
     }
-    if (typing) {
-      // Clicking out ends text entry.
-      finishText();
-      status = "";
-      return toolbar();
-    }
+    // Clicking out ends text entry; in text mode the click also places the next text.
+    if (typing) finishText();
     const btn = b & 3;
     if (btn === 1) return;
     if (mode === "text") {
@@ -466,6 +480,7 @@ function onMouse(b: number, x: number, y: number, release: boolean) {
     const r = SIZES[size] * S * (erase ? 2.5 : 1);
     current = { kind: "stroke", color: erase ? "bg" : COLORS[color][2], r, pts: [] };
     ops.push(current);
+    setUnsaved(true);
   }
   if (!current) return;
   current.pts.push(px * S, Math.min(py * S, H - 1));
@@ -499,7 +514,7 @@ function typeKey(k: string) {
   const t = typing!;
   if (k === "\x1b") {
     finishText();
-    status = "";
+    status = "click where the text goes";
     return toolbar();
   }
   if (k === "\x7f" || k === "\b") {
@@ -511,6 +526,7 @@ function typeKey(k: string) {
     t.text += k;
     drawText(t, t.text.length - 1);
   } else return;
+  setUnsaved(true);
   invalidate();
 }
 
